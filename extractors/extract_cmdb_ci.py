@@ -8,18 +8,15 @@ from common import (
     run_extraction,
 )
 
-TABLE_NAME = "incident"
-URL = f"{SN_INSTANCE}/api/now/table/incident"
+TABLE_NAME = "cmdb_ci"
+URL = f"{SN_INSTANCE}/api/now/table/cmdb_ci"
 
 
-def upsert_incidents(records):
+def upsert_cmdb_ci(records):
     """
-    Writes extracted incident records into raw.incidents.
-    Uses INSERT ... ON CONFLICT (sys_id) DO UPDATE — this is the upsert
-    pattern: new incidents get inserted, previously-seen incidents (same
-    sys_id) get their row overwritten with the latest data. This keeps
-    raw.incidents as a current-state table, one row per incident, as
-    opposed to a full change-history table (a separate, future addition).
+    Writes extracted configuration item records into raw.cmdb_ci.
+    Same upsert pattern as the other reference tables — one row per CI,
+    always current.
     """
     if not records:
         return 0
@@ -30,21 +27,22 @@ def upsert_incidents(records):
     for r in records:
         cur.execute(
             """
-            INSERT INTO raw.incidents (
-                sys_id, number, short_description, priority, state,
-                assignment_group, assigned_to, opened_at, closed_at,
-                sys_created_on, sys_updated_on, raw_payload, _loaded_at
+            INSERT INTO raw.cmdb_ci (
+                sys_id, name, sys_class_name, operational_status,
+                install_status, category, subcategory, assigned_to,
+                support_group, sys_created_on, sys_updated_on,
+                raw_payload, _loaded_at
             )
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             ON CONFLICT (sys_id) DO UPDATE SET
-                number             = EXCLUDED.number,
-                short_description  = EXCLUDED.short_description,
-                priority            = EXCLUDED.priority,
-                state               = EXCLUDED.state,
-                assignment_group    = EXCLUDED.assignment_group,
+                name                = EXCLUDED.name,
+                sys_class_name      = EXCLUDED.sys_class_name,
+                operational_status  = EXCLUDED.operational_status,
+                install_status      = EXCLUDED.install_status,
+                category            = EXCLUDED.category,
+                subcategory         = EXCLUDED.subcategory,
                 assigned_to         = EXCLUDED.assigned_to,
-                opened_at           = EXCLUDED.opened_at,
-                closed_at           = EXCLUDED.closed_at,
+                support_group       = EXCLUDED.support_group,
                 sys_created_on      = EXCLUDED.sys_created_on,
                 sys_updated_on      = EXCLUDED.sys_updated_on,
                 raw_payload         = EXCLUDED.raw_payload,
@@ -52,14 +50,14 @@ def upsert_incidents(records):
             """,
             (
                 r["sys_id"],
-                r.get("number"),
-                r.get("short_description"),
-                r.get("priority"),
-                r.get("state"),
-                extract_ref_value(r.get("assignment_group")),
+                r.get("name"),
+                r.get("sys_class_name"),
+                r.get("operational_status"),
+                r.get("install_status"),
+                r.get("category"),
+                r.get("subcategory"),
                 extract_ref_value(r.get("assigned_to")),
-                parse_sn_datetime(r.get("opened_at")),
-                parse_sn_datetime(r.get("closed_at")),
+                extract_ref_value(r.get("support_group")),
                 parse_sn_datetime(r.get("sys_created_on")),
                 parse_sn_datetime(r.get("sys_updated_on")),
                 Json(r),
@@ -74,7 +72,7 @@ def upsert_incidents(records):
 
 
 if __name__ == "__main__":
-    print(f"Extracting incidents from {SN_INSTANCE}...")
+    print(f"Extracting cmdb_ci from {SN_INSTANCE}...")
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -88,6 +86,6 @@ if __name__ == "__main__":
         table_name=TABLE_NAME,
         url=URL,
         auth=SN_AUTH,
-        upsert_fn=upsert_incidents,
+        upsert_fn=upsert_cmdb_ci,
         full_backfill=args.full_backfill,
     )

@@ -8,18 +8,17 @@ from common import (
     run_extraction,
 )
 
-TABLE_NAME = "incident"
-URL = f"{SN_INSTANCE}/api/now/table/incident"
+TABLE_NAME = "change_request"
+URL = f"{SN_INSTANCE}/api/now/table/change_request"
 
 
-def upsert_incidents(records):
+def upsert_change_requests(records):
     """
-    Writes extracted incident records into raw.incidents.
-    Uses INSERT ... ON CONFLICT (sys_id) DO UPDATE — this is the upsert
-    pattern: new incidents get inserted, previously-seen incidents (same
-    sys_id) get their row overwritten with the latest data. This keeps
-    raw.incidents as a current-state table, one row per incident, as
-    opposed to a full change-history table (a separate, future addition).
+    Writes extracted change request records into raw.change_requests.
+    Same upsert pattern as incidents — one row per change, always current
+    state. Mirrors raw.incidents in shape since change_request is
+    structurally very similar (its own fact table for a different ITSM
+    process, referencing the same assignment_group/cmdb_ci dimensions).
     """
     if not records:
         return 0
@@ -30,21 +29,27 @@ def upsert_incidents(records):
     for r in records:
         cur.execute(
             """
-            INSERT INTO raw.incidents (
-                sys_id, number, short_description, priority, state,
-                assignment_group, assigned_to, opened_at, closed_at,
-                sys_created_on, sys_updated_on, raw_payload, _loaded_at
+            INSERT INTO raw.change_requests (
+                sys_id, number, short_description, type, risk, priority,
+                state, approval, assignment_group, assigned_to, cmdb_ci,
+                requested_by, start_date, end_date, sys_created_on,
+                sys_updated_on, raw_payload, _loaded_at
             )
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             ON CONFLICT (sys_id) DO UPDATE SET
-                number             = EXCLUDED.number,
-                short_description  = EXCLUDED.short_description,
+                number              = EXCLUDED.number,
+                short_description   = EXCLUDED.short_description,
+                type                = EXCLUDED.type,
+                risk                = EXCLUDED.risk,
                 priority            = EXCLUDED.priority,
                 state               = EXCLUDED.state,
+                approval            = EXCLUDED.approval,
                 assignment_group    = EXCLUDED.assignment_group,
                 assigned_to         = EXCLUDED.assigned_to,
-                opened_at           = EXCLUDED.opened_at,
-                closed_at           = EXCLUDED.closed_at,
+                cmdb_ci             = EXCLUDED.cmdb_ci,
+                requested_by        = EXCLUDED.requested_by,
+                start_date          = EXCLUDED.start_date,
+                end_date            = EXCLUDED.end_date,
                 sys_created_on      = EXCLUDED.sys_created_on,
                 sys_updated_on      = EXCLUDED.sys_updated_on,
                 raw_payload         = EXCLUDED.raw_payload,
@@ -54,12 +59,17 @@ def upsert_incidents(records):
                 r["sys_id"],
                 r.get("number"),
                 r.get("short_description"),
+                r.get("type"),
+                r.get("risk"),
                 r.get("priority"),
                 r.get("state"),
+                r.get("approval"),
                 extract_ref_value(r.get("assignment_group")),
                 extract_ref_value(r.get("assigned_to")),
-                parse_sn_datetime(r.get("opened_at")),
-                parse_sn_datetime(r.get("closed_at")),
+                extract_ref_value(r.get("cmdb_ci")),
+                extract_ref_value(r.get("requested_by")),
+                parse_sn_datetime(r.get("start_date")),
+                parse_sn_datetime(r.get("end_date")),
                 parse_sn_datetime(r.get("sys_created_on")),
                 parse_sn_datetime(r.get("sys_updated_on")),
                 Json(r),
@@ -74,7 +84,7 @@ def upsert_incidents(records):
 
 
 if __name__ == "__main__":
-    print(f"Extracting incidents from {SN_INSTANCE}...")
+    print(f"Extracting change_request from {SN_INSTANCE}...")
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -88,6 +98,6 @@ if __name__ == "__main__":
         table_name=TABLE_NAME,
         url=URL,
         auth=SN_AUTH,
-        upsert_fn=upsert_incidents,
+        upsert_fn=upsert_change_requests,
         full_backfill=args.full_backfill,
     )
