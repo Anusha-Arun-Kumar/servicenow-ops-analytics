@@ -1,0 +1,52 @@
+version: 2
+
+sources:
+  - name: raw
+    description: "Raw, minimally-processed data landed directly from ServiceNow extractors."
+    schema: raw
+    tables:
+      - name: incidents
+        description: "One row per incident, current state (upserted on sys_id)."
+        loaded_at_field: sys_updated_on
+        columns:
+          - name: sys_id
+            description: "Primary key — ServiceNow's unique record identifier."
+            tests:
+              - unique
+              - not_null
+
+      - name: change_requests
+        description: "One row per change request, current state (upserted on sys_id)."
+        loaded_at_field: sys_updated_on
+        columns:
+          - name: sys_id
+            tests:
+              - unique
+              - not_null
+
+      - name: sys_user_group
+        description: "Assignment groups (dimension). One row per group, current state."
+        loaded_at_field: sys_updated_on
+        columns:
+          - name: sys_id
+            tests:
+              - unique
+              - not_null
+
+      - name: sys_user
+        description: "Users (dimension). One row per user, current state."
+        loaded_at_field: sys_updated_on
+        columns:
+          - name: sys_id
+            tests:
+              - unique
+              - not_null
+
+      - name: cmdb_ci
+        description: "Configuration items (dimension). One row per CI, current state."
+        loaded_at_field: sys_updated_on
+        columns:
+          - name: sys_id
+            tests:
+              - unique
+              - not_null

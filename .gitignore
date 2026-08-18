@@ -219,3 +219,6 @@ __marimo__/
 .env
 .DS_Store
 logs/
+dbt_project/target/
+dbt_project/logs/
+dbt_project/dbt_packages/

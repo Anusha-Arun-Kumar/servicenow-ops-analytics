@@ -1,0 +1,108 @@
+version: 2
+
+models:
+  - name: dim_assignment_group
+    description: "Assignment groups (dimension), fully resolved with manager and parent group names."
+    columns:
+      - name: assignment_group_id
+        description: "Primary key."
+        tests:
+          - unique
+          - not_null
+
+  - name: dim_user
+    description: "Users (dimension), fully resolved with manager name."
+    columns:
+      - name: user_id
+        description: "Primary key."
+        tests:
+          - unique
+          - not_null
+
+  - name: dim_ci
+    description: "Configuration items (dimension), fully resolved with assignee and support group names."
+    columns:
+      - name: ci_id
+        description: "Primary key."
+        tests:
+          - unique
+          - not_null
+
+  - name: fct_incidents
+    description: "One row per incident, current state, with resolved names and SLA breach calculation."
+    columns:
+      - name: incident_id
+        description: "Primary key."
+        tests:
+          - unique
+          - not_null
+
+      - name: priority
+        description: "1 (critical) through 5 (planning)."
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['1', '2', '3', '4', '5']
+              config:
+                severity: warn   # exploratory — exact value set for this instance not independently confirmed
+
+      - name: assignment_group_id
+        description: "FK to dim_assignment_group. Nullable — some incidents are unassigned."
+        tests:
+          - relationships:
+              arguments:
+                to: ref('dim_assignment_group')
+                field: assignment_group_id
+              config:
+                severity: warn   # allow nulls (unassigned incidents); only flag genuinely broken references
+                where: "assignment_group_id is not null"
+
+      - name: assigned_to_id
+        description: "FK to dim_user. Nullable — some incidents are unassigned."
+        tests:
+          - relationships:
+              arguments:
+                to: ref('dim_user')
+                field: user_id
+              config:
+                severity: warn
+                where: "assigned_to_id is not null"
+
+  - name: fct_change_requests
+    description: "One row per change request, current state, with resolved names and planned-window calculation."
+    columns:
+      - name: change_request_id
+        description: "Primary key."
+        tests:
+          - unique
+          - not_null
+
+      - name: priority
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['1', '2', '3', '4', '5']
+              config:
+                severity: warn
+
+      - name: assignment_group_id
+        description: "FK to dim_assignment_group. Nullable — some changes are unassigned."
+        tests:
+          - relationships:
+              arguments:
+                to: ref('dim_assignment_group')
+                field: assignment_group_id
+              config:
+                severity: warn
+                where: "assignment_group_id is not null"
+
+      - name: ci_id
+        description: "FK to dim_ci. Nullable — some changes have no associated configuration item."
+        tests:
+          - relationships:
+              arguments:
+                to: ref('dim_ci')
+                field: ci_id
+              config:
+                severity: warn
+                where: "ci_id is not null"
