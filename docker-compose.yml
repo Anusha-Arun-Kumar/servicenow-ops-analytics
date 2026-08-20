@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   postgres:
     image: postgres:15
@@ -18,11 +16,13 @@ services:
       retries: 5
 
   airflow-init:
-    image: apache/airflow:2.9.3
+    build: .
     container_name: sn_airflow_init
     depends_on:
       postgres:
         condition: service_healthy
+    env_file:
+      - .env
     environment:
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
@@ -38,38 +38,52 @@ services:
           --lastname Kumar \
           --role Admin \
           --email admin@example.com \
-          --password ServiceNow123
+          --password YourNewStrongPassword123!
 
   airflow-webserver:
-    image: apache/airflow:2.9.3
+    build: .
     container_name: sn_airflow_webserver
     depends_on:
       - airflow-init
+    env_file:
+      - .env
     environment:
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
       AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+      POSTGRES_HOST: postgres
+      POSTGRES_DB: servicenow_dw
+      DBT_PROFILES_DIR: /opt/airflow/.dbt
     volumes:
       - ./dags:/opt/airflow/dags
       - ./extractors:/opt/airflow/extractors
+      - ./dbt_project:/opt/airflow/dbt_project
       - ./logs:/opt/airflow/logs
+      - ~/.dbt:/opt/airflow/.dbt
     ports:
       - "8080:8080"
     command: webserver
 
   airflow-scheduler:
-    image: apache/airflow:2.9.3
+    build: .
     container_name: sn_airflow_scheduler
     depends_on:
       - airflow-init
+    env_file:
+      - .env
     environment:
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
       AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+      POSTGRES_HOST: postgres
+      POSTGRES_DB: servicenow_dw
+      DBT_PROFILES_DIR: /opt/airflow/.dbt
     volumes:
       - ./dags:/opt/airflow/dags
       - ./extractors:/opt/airflow/extractors
+      - ./dbt_project:/opt/airflow/dbt_project
       - ./logs:/opt/airflow/logs
+      - ~/.dbt:/opt/airflow/.dbt
     command: scheduler
 
 volumes:
