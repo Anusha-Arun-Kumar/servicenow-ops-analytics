@@ -86,5 +86,16 @@ services:
       - ~/.dbt:/opt/airflow/.dbt
     command: scheduler
 
+  metabase:
+    image: metabase/metabase:latest
+    container_name: sn_metabase
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    environment:
+      MB_DB_TYPE: h2   # Metabase's own internal app database (separate from your data) 
+
 volumes:
   postgres_data:

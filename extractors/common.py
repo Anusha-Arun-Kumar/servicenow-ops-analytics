@@ -36,6 +36,7 @@ PG_CONFIG = {
     "dbname": os.getenv("POSTGRES_DB", "servicenow_dw"),
     "user": os.getenv("POSTGRES_USER", "airflow"),
     "password": os.getenv("POSTGRES_PASSWORD", "airflow"),
+    "sslmode": os.getenv("POSTGRES_SSLMODE", "prefer"),
 }
 
 DEFAULT_LOOKBACK_DAYS = 90  # first-ever run for a table: only pull last N days, not full history
